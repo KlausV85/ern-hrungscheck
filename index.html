@@ -1,0 +1,422 @@
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
+    <title>NUTRITION_OS: Performance Tracker v20</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { tech: { cyan: '#0ea5e9', green: '#10b981', dark: '#0f172a', panel: '#1e293b', accent: '#6366f1' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+        * { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            max-width: 100vw;
+            -webkit-text-size-adjust: 100%;
+            margin: 0; padding: 0;
+            background-color: #f8fafc;
+        }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .dark body { background-color: #0f172a; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .slider-wrapper { padding: 0 14px; width: 100%; }
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; outline: none; margin: 15px 0; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; background: rgba(148, 163, 184, 0.3); border-radius: 4px; }
+        input[type=range]::-webkit-slider-thumb { 
+            -webkit-appearance: none; height: 30px; width: 30px; 
+            border-radius: 50%; background: #0ea5e9; cursor: pointer; margin-top: -11px; 
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3); transition: transform 0.1s; 
+        }
+        input[type=range]:disabled::-webkit-slider-thumb { background: #64748b; cursor: not-allowed; transform: scale(1); }
+        .slider-box-mod2 { position: relative; display: flex; align-items: center; width: 100%; padding: 0 14px; }
+        .true-marker { position: absolute; width: 4px; height: 32px; z-index: 1; border-radius: 2px; transform: translateX(-50%); transition: opacity 0.5s; box-shadow: 0 0 8px currentColor; pointer-events: none;}
+        .plate-segment { cursor: pointer; transition: all 0.3s ease; stroke: #e2e8f0; stroke-width: 2px; transform-origin: center; }
+        .dark .plate-segment { stroke: #1e293b; }
+        .plate-segment:hover { transform: scale(1.03); filter: brightness(1.1); z-index: 10; stroke-width: 4px; }
+        .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-panel { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative; }
+        .dark .glass-panel { background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .source-link { font-size: 0.70rem; color: #0ea5e9; text-decoration: none; border-bottom: 1px dotted #0ea5e9; display: inline-block; padding-bottom: 1px; transition: color 0.2s; word-break: break-word;}
+        .source-link:hover { color: #0284c7; border-color: #0284c7; }
+        .chart-wrapper { position: relative; height: 260px; width: 100%; min-width: 0; }
+        @media (min-width: 768px) { .chart-wrapper { height: 320px; } }
+        select { font-size: 16px !important; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; }
+        .word-wrap-safe { word-wrap: break-word; overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
+        .module-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(148, 163, 184, 0.1); }
+    </style>
+</head>
+<body class="text-slate-800 dark:text-slate-200 transition-colors duration-300">
+
+    <nav class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-md sticky top-0 z-50 w-full min-w-0">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-3 h-3 bg-tech-cyan animate-pulse rounded-full shadow-[0_0_8px_#0ea5e9] flex-shrink-0"></div>
+            <h1 class="text-lg md:text-xl font-extrabold font-mono tracking-tight truncate">Ernährungs<span class="text-tech-cyan">-Check</span></h1>
+        </div>
+        <button id="themeToggle" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 font-mono text-xs md:text-sm flex-shrink-0">
+            <span id="sunIcon" class="hidden">☀️ Hell</span>
+            <span id="moonIcon">🌙 Dunkel</span>
+        </button>
+    </nav>
+
+    <main class="w-full max-w-5xl mx-auto p-4 md:p-8 space-y-10 md:space-y-16 overflow-x-hidden">
+
+        <section class="glass-panel p-5 md:p-10 w-full min-w-0">
+            <header class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-black mb-2 font-mono uppercase word-wrap-safe"><span class="text-tech-cyan">></span> 01. Status Quo</h2>
+                <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">Schätze deinen Wochendurchschnitt und vergleiche dich dann mit dem Durchschnittsverbrauch.</p>
+            </header>
+            <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 min-w-0">
+                <div class="space-y-8 min-w-0 w-full">
+                    <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 w-full min-w-0">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="min-w-0 pr-2">
+                                <label class="font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 block text-xs md:text-sm truncate">🥩 Fleischkonsum / Woche</label>
+                                <p class="text-[10px] text-slate-500 mt-1 leading-snug word-wrap-safe">Inklusive Wurst und Schinken. Wochenmenge (ca. 21 Mahlzeiten/Woche).</p>
+                            </div>
+                            <span id="meatVal" class="font-mono text-tech-cyan font-bold text-lg md:text-xl whitespace-nowrap">1500g</span>
+                        </div>
+                        <div class="slider-wrapper"><input type="range" id="meatSlider" min="0" max="3000" step="50" value="1500"></div>
+                        <div class="mt-2 grid grid-cols-3 gap-1 md:gap-2 w-full min-w-0">
+                            <div class="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center flex flex-col justify-between min-w-0">
+                                <div class="text-[9px] md:text-[10px] uppercase font-bold text-slate-500 mb-1 word-wrap-safe leading-tight">Leberkäs-<wbr>Weckla</div>
+                                <div id="calcLeber" class="font-mono font-bold text-slate-700 dark:text-slate-200 text-sm">~12.0</div>
+                            </div>
+                            <div class="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center flex flex-col justify-between min-w-0">
+                                <div class="text-[9px] md:text-[10px] uppercase font-bold text-slate-500 mb-1 word-wrap-safe leading-tight">Steaks<br>(200g)</div>
+                                <div id="calcSteak" class="font-mono font-bold text-slate-700 dark:text-slate-200 text-sm">~7.5</div>
+                            </div>
+                            <div class="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center flex flex-col justify-between min-w-0">
+                                <div class="text-[9px] md:text-[10px] uppercase font-bold text-slate-500 mb-1 word-wrap-safe leading-tight">Schäufele<br>(Fleisch)</div>
+                                <div id="calcSchaufele" class="font-mono font-bold text-slate-700 dark:text-slate-200 text-sm">~3.0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 w-full min-w-0">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="min-w-0 pr-2">
+                                <label class="font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 block text-xs md:text-sm truncate">💧 Flüssigkeit / Tag</label>
+                                <p class="text-[10px] text-slate-500 mt-1 leading-snug word-wrap-safe">Wasser, ungesüßter Tee oder Kaffee Bier, Limo und Energydrinks zählen nicht.</p>
+                            </div>
+                            <span id="waterVal" class="font-mono text-tech-cyan font-bold text-lg md:text-xl whitespace-nowrap">2.5 L</span>
+                        </div>
+                        <div class="slider-wrapper"><input type="range" id="waterSlider" min="0" max="5" step="0.5" value="2.5"></div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 w-full min-w-0">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="min-w-0 pr-2">
+                                <label class="font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 block text-xs md:text-sm truncate">🍔 Fast Food & Snacks / Woche</label>
+                                <p class="text-[10px] text-slate-500 mt-1 leading-snug word-wrap-safe">Mahlzeiten pro Woche. Z.B.:Döner, Metzger-Imbiss, Mc-Donnald, Bäcker-Teilchen etc.</p>
+                            </div>
+                            <span id="fastfoodVal" class="font-mono text-tech-cyan font-bold text-lg md:text-xl whitespace-nowrap">5x</span>
+                        </div>
+                        <div class="slider-wrapper"><input type="range" id="fastfoodSlider" min="0" max="10" step="1" value="5"></div>
+                    </div>
+                    <button id="compareBtn" class="w-full py-4 bg-tech-cyan text-white font-bold text-base md:text-lg rounded-2xl hover:bg-cyan-500 transition-all font-mono shadow-md active:scale-95">[ AUSWERTUNG STARTEN ]</button>
+                </div>
+                <div id="chartContainer" class="w-full min-w-0 opacity-30 grayscale transition-all duration-700 flex flex-col justify-center bg-slate-50 dark:bg-[#0f172a] rounded-3xl p-4 border border-slate-200 dark:border-slate-800/50">
+                    <div class="chart-wrapper"><canvas id="telemetryChart"></canvas></div>
+                </div>
+            </div>
+            <footer class="module-footer text-center">
+                <a href="https://www.verbraucherzentrale.de/wissen/lebensmittel/lebensmittelproduktion/wie-viel-fleisch-ist-das-richtige-mass-5535" target="_blank" class="source-link mr-4">Quelle Fleisch: Verbraucherzentrale</a>
+                <a href="https://www.verbraucherzentrale.de/wissen/lebensmittel/gesund-ernaehren/wie-viel-sollte-man-am-tag-trinken-24202" target="_blank" class="source-link mr-4">Quelle Wasser: Verbraucherzentrale</a>
+                <a href="https://www.bmel.de/DE/themen/ernaehrung/ernaehrungsreport2023.html" target="_blank" class="source-link">Quelle Konsum: BMEL Ernährungsreport</a>
+            </footer>
+        </section>
+
+        <section class="glass-panel p-5 md:p-10 border-t-4 border-tech-accent w-full min-w-0">
+            <header class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-black mb-2 font-mono uppercase word-wrap-safe"><span class="text-tech-accent">></span> 02. Wieviel musst du essen?</h2>
+                <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">Schätze, wieviel Gramm du für <strong>100 kcal</strong> Energie benötigst. Schaue dir dann die Fakten beider Lebensmittel genauer an.</p>
+            </header>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8 min-w-0">
+                <div class="bg-slate-50 dark:bg-slate-800/60 p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-lg md:text-2xl font-black mb-6 text-tech-green">🥦 Brokkoli (100 kcal)</h3>
+                    <div class="font-mono text-xl md:text-2xl font-bold text-tech-green mb-4 text-center"><span id="gb_mass_val">200g</span></div>
+                    <div class="slider-box-mod2"><input type="range" id="gb_mass" min="0" max="400" step="5" value="200"><div id="gb_mass_true" class="true-marker hidden text-emerald-500 bg-emerald-500"></div></div>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/60 p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-lg md:text-2xl font-black mb-6 text-rose-500">🥓 Leberkäse (100 kcal)</h3>
+                    <div class="font-mono text-xl md:text-2xl font-bold text-rose-500 mb-4 text-center"><span id="gl_mass_val">200g</span></div>
+                    <div class="slider-box-mod2"><input type="range" id="gl_mass" min="0" max="400" step="5" value="200"><div id="gl_mass_true" class="true-marker hidden text-rose-500 bg-rose-500"></div></div>
+                </div>
+            </div>
+            <button id="revealBtn" onclick="revealAhaEffect()" class="w-full py-4 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 font-bold text-base md:text-lg rounded-2xl transition-all font-mono shadow-md">[ FAKTEN ENTSCHLÜSSELN ]</button>
+            <div id="revealBox" class="mt-8 hidden animate-fade min-w-0">
+                <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-3xl p-6 md:p-8 min-w-0 text-slate-800 dark:text-slate-200">
+                    <p class="text-sm md:text-lg leading-relaxed mb-8 font-medium">Um 100 kcal zu erreichen, isst du knapp <strong>300g Brokkoli</strong> (Magen voll) oder nur <strong>33g Leberkäse</strong> (ein Bissen).</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 min-w-0">
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 font-mono text-xs md:text-sm">
+                            <h5 class="font-bold text-emerald-600 mb-4 uppercase">Daten: Brokkoli</h5>
+                            <div class="space-y-2">
+                                <div class="flex justify-between border-b pb-1"><span>Masse (Sättigung):</span> <b>294 g</b></div>
+                                <div class="flex justify-between border-b pb-1"><span>Protein:</span> <b>10.0 g</b></div>
+                                <div class="flex justify-between border-b pb-1"><span>CO2:</span> <b>120 g</b></div>
+                                <div class="flex justify-between"><span>Wasser:</span> <b>88 L</b></div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-rose-200 dark:border-rose-900/50 font-mono text-xs md:text-sm">
+                            <h5 class="font-bold text-rose-600 mb-4 uppercase">Daten: Leberkäse</h5>
+                            <div class="space-y-2">
+                                <div class="flex justify-between border-b pb-1"><span>Masse (Sättigung):</span> <b>33 g</b></div>
+                                <div class="flex justify-between border-b pb-1"><span>Protein:</span> <b>4.0 g</b></div>
+                                <div class="flex justify-between border-b pb-1"><span>CO2:</span> <b>460 g</b></div>
+                                <div class="flex justify-between"><span>Wasser:</span> <b>132 L</b></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col items-center gap-4">
+                <a href="https://www.verbraucherzentrale.de/sites/default/files/2023-11/broschure-lebensmittel-und-klima.pdf" target="_blank" class="w-full md:w-auto px-6 py-3 bg-white dark:bg-slate-800 border-2 border-dashed border-tech-cyan rounded-xl flex items-center justify-center gap-3 hover:bg-tech-cyan/10 transition-colors shadow-sm">
+                    <span class="text-3xl">🌍🌱</span>
+                    <span class="font-bold text-sm text-tech-cyan flex items-center gap-2">Info: Lebensmittel & Klima <span class="bg-tech-cyan text-white rounded-full w-5 h-5 flex items-center justify-center text-xs ml-1 font-bold">i</span></span>
+                </a>
+            </div>
+        </section>
+
+        <section class="glass-panel p-5 md:p-10 w-full min-w-0">
+            <header class="mb-8 min-w-0 text-center">
+                <h2 class="text-2xl md:text-3xl font-black mb-2 font-mono uppercase tracking-tight text-tech-cyan">> 03. Direktvergleich</h2>
+                <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">Vergleiche tierische und pflanzliche Lebensmittel miteinander. Wähle dafür je eines aus. (Werte für 100 kcal).</p>
+            </header>
+            <div class="grid grid-cols-2 gap-4 md:gap-8 mb-8 min-w-0 max-w-3xl mx-auto">
+                <select id="animalSelect" class="w-full bg-slate-50 dark:bg-slate-900 p-3 rounded-xl font-bold outline-none border border-slate-200 dark:border-slate-700 text-sm">
+                    <option value="lachs">🐟 Lachs</option>
+                    <option value="rind">🥩 Rindersteak</option>
+                    <option value="huhn">🍗 Hähnchenfilet</option>
+                </select>
+                <select id="plantSelect" class="w-full bg-slate-50 dark:bg-slate-900 p-3 rounded-xl font-bold outline-none border border-slate-200 dark:border-slate-700 text-sm">
+                    <option value="linsen">🥘 Linsen</option>
+                    <option value="hafer">🥣 Haferflocken</option>
+                    <option value="kuerbis">🌻 Kürbiskerne</option>
+                </select>
+            </div>
+            <div id="comparisonList" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full min-w-0"></div>
+            <div class="mt-8 p-4 bg-tech-cyan/10 border-l-4 border-tech-cyan rounded text-sm italic text-center font-medium text-slate-700 dark:text-slate-300">
+                📊 Tipp: Sinnvoll tierisches und pflanzliches kombinieren.
+            </div>
+            <footer class="module-footer text-center">
+                <a href="https://fddb.info/" target="_blank" class="source-link mr-4">Quelle Nährwerte: FDDB</a>
+                <a href="https://www.ifeu.de/projekt/oekologischer-fussabdruck-von-lebensmitteln-und-gerichten-in-deutschland/" target="_blank" class="source-link">Quelle CO2: IFEU Institut</a>
+            </footer>
+        </section>
+
+        <section class="glass-panel p-5 md:p-10 border-t-4 border-amber-500 w-full min-w-0">
+            <header class="mb-8 min-w-0">
+                <h2 class="text-2xl md:text-3xl font-black mb-2 font-mono uppercase tracking-tight text-amber-500">> 04. Mittags-Check</h2>
+                <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">Dein Mittagessen steuert deine Leistung am Nachmittag. Wähle ein Mittagessen und prüfe die Effekte:</p>
+            </header>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 bg-slate-50 dark:bg-slate-800/40 p-5 md:p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 mb-8 min-w-0">
+                <div class="min-w-0">
+                    <label class="block text-[10px] md:text-xs font-bold uppercase mb-2 text-slate-500">🌾 Basis</label>
+                    <select id="simBase" class="w-full bg-white dark:bg-slate-900 font-medium p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm shadow-sm">
+                        <option value="1">Vollkornreis / Quinoa</option>
+                        <option value="2">Salzkartoffeln</option>
+                        <option value="5">Helles Brötchen / Brot</option>
+                        <option value="8" selected>Pommes Frites</option>
+                    </select>
+                </div>
+                <div class="min-w-0">
+                    <label class="block text-[10px] md:text-xs font-bold uppercase mb-2 text-slate-500">🥩 Protein</label>
+                    <select id="simProtein" class="w-full bg-white dark:bg-slate-900 font-medium p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm shadow-sm">
+                        <option value="1">Linsen / Tofu</option>
+                        <option value="2">Hähnchen (Natur)</option>
+                        <option value="6">Schäufele / Braten</option>
+                        <option value="8" selected>Paniertes Schnitzel</option>
+                    </select>
+                </div>
+                <div class="min-w-0">
+                    <label class="block text-[10px] md:text-xs font-bold uppercase mb-2 text-slate-500">🧪 Zubereitung / Soße</label>
+                    <select id="simExtra" class="w-full bg-white dark:bg-slate-900 font-medium p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm shadow-sm">
+                        <option value="0">Gemüse / Salat</option>
+                        <option value="1">Olivenöl</option>
+                        <option value="4" selected>Ketchup / BBQ</option>
+                        <option value="6">Mayonnaise / Sahnesoße</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="calculateImpact()" class="w-full py-4 bg-amber-500 text-white font-bold text-base md:text-lg rounded-2xl shadow-md active:scale-95 transition-transform">[ LEISTUNG ANALYSIEREN ]</button>
+            <div id="simResult" class="mt-8 hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden animate-fade min-w-0">
+                <div id="simRiskHeaderBox" class="p-5 md:p-6 border-b border-slate-200 dark:border-slate-700"><h4 id="simRiskHeader" class="text-base md:text-xl font-bold font-mono uppercase tracking-wider"></h4></div>
+                <div class="p-5 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-sm">
+                    <div><p class="font-bold text-slate-400 mb-2 uppercase text-[10px]">Status (14:00 Uhr):</p><p id="simTextAfternoon" class="text-slate-700 dark:text-slate-300"></p></div>
+                    <div><p class="font-bold text-slate-400 mb-2 uppercase text-[10px]">Auswirkung:</p><p id="simTextHealth" class="text-slate-700 dark:text-slate-300"></p></div>
+                </div>
+            </div>
+            <footer class="module-footer text-center">
+                <a href="https://www.dw.com/de/faktencheck-wie-sch%C3%A4dlich-f%C3%BCr-das-klima-ist-der-verzehr-von-fleisch-wirklich/a-63252828" target="_blank" class="source-link mr-4">DW Faktencheck: Klima & Fleisch</a>
+                <a href="https://www.dguv.de/ifa/fachinfos/arbeiten-4-0/risikoobservatorium/trendportal/ungesunde-ernaehrung.jsp" target="_blank" class="source-link">IFA Risikoobservatorium: Ungesunde Ernährung</a>
+            </footer>
+        </section>
+
+        <section class="glass-panel p-5 md:p-10 w-full min-w-0">
+            <h2 class="text-2xl md:text-3xl font-black mb-10 font-mono uppercase tracking-tight text-tech-cyan text-center">> 05. Der ideale Teller</h2>
+			 <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">Ernährung ist individuell, aber empfohlen sind 50% Gemüse, 23% Kohlehydrate, 23% Eiweis und 4% gesunde Fette.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                <div class="relative w-full max-w-[340px] mx-auto aspect-square min-w-0">
+                    <svg viewBox="0 0 100 100" class="w-full h-full rounded-full bg-slate-50 dark:bg-slate-800 p-2 shadow-inner border-2 border-slate-200 dark:border-slate-700">
+                        <path d="M 50,50 L 50,5 A 45,45 0 0 0 50,95 Z" fill="#10b981" class="plate-segment" onclick="showPlateInfo('veggie')" />
+                        <path d="M 50,50 L 50,5 A 45,45 0 0 1 95,50 Z" fill="#f59e0b" class="plate-segment" onclick="showPlateInfo('carbs')" />
+                        <path d="M 50,50 L 95,50 A 45,45 0 0 1 50,95 Z" fill="#f43f5e" class="plate-segment" onclick="showPlateInfo('protein')" />
+                    </svg>
+                    <div class="absolute inset-0 pointer-events-none text-white font-bold text-3xl drop-shadow-md">
+                        <span style="position:absolute; left:30%; top:50%; transform: translate(-50%, -50%);">🥦</span>
+                        <span style="position:absolute; left:70%; top:30%; transform: translate(-50%, -50%);">🌾</span>
+                        <span style="position:absolute; left:70%; top:70%; transform: translate(-50%, -50%);">🍗</span>
+                    </div>
+                    <div onclick="showPlateInfo('fats')" class="absolute top-0 right-0 w-14 h-14 bg-amber-400 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center cursor-pointer hover:scale-110 shadow-lg z-20"><span class="text-2xl">🥑</span></div>
+                    <div onclick="showPlateInfo('water')" class="absolute bottom-0 left-0 w-14 h-14 bg-blue-500 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center cursor-pointer hover:scale-110 shadow-lg z-20"><span class="text-2xl">💧</span></div>
+                </div>
+                <div id="plateInfoBox" class="bg-slate-50 dark:bg-slate-800/50 p-6 md:p-8 rounded-3xl min-h-[300px] flex flex-col justify-center border border-slate-200 dark:border-slate-700 min-w-0 shadow-sm">
+                    <p class="text-center text-slate-400 font-mono text-sm">👆 Klicke auf ein Element des Tellers für Details.</p>
+                </div>
+            </div>
+            <footer class="module-footer text-center">
+                <a href="https://www.hsph.harvard.edu/nutritionsource/healthy-eating-plate/" target="_blank" class="source-link">Konzept & Quelle: Harvard Healthy Eating Plate</a>
+            </footer>
+        </section>
+    </main>
+
+    <footer class="text-center pb-10 pt-4 text-slate-400 text-[10px] font-mono px-4 opacity-70 w-full min-w-0">
+        NUTRITION_OS v19.0 // Verifizierte Datenquellen: Verbraucherzentrale, BZfE, DGE, FDDB, IFEU, DW, IFA, Harvard.
+    </footer>
+
+    <script>
+        const themeBtn = document.getElementById('themeToggle');
+        themeBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            document.getElementById('sunIcon').classList.toggle('hidden');
+            document.getElementById('moonIcon').classList.toggle('hidden');
+            if(chartInitialized) updateModul1();
+        });
+
+        const AVG_DE = [1.1, 1.3, 3]; 
+        let chartInitialized = false;
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['🥩 Fleisch', '💧 Wasser', '🍔 Snacks'],
+                datasets: [
+                    { label: 'Schnitt DE', data: [1.1, 1.3, 3], backgroundColor: '#94a3b8', borderRadius: 6 },
+                    { label: 'Empfehlung', data: [0.3, 1.5, 1], backgroundColor: '#10b981', borderRadius: 6 },
+                    { label: 'Deine Werte', data: [0, 0, 0], backgroundColor: '#0ea5e9', borderRadius: 6 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { font: {size: 10} } }, x: { grid: { display: false }, ticks: { font: {size: 10} } } }, plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: {size: 10} } } } }
+        });
+
+        function updateModul1() {
+            const m = document.getElementById('meatSlider').value;
+            document.getElementById('meatVal').innerText = m + 'g';
+            document.getElementById('calcLeber').innerText = '~' + (m / 125).toFixed(1);
+            document.getElementById('calcSteak').innerText = '~' + (m / 200).toFixed(1);
+            document.getElementById('calcSchaufele').innerText = '~' + (m / 500).toFixed(1); 
+            document.getElementById('waterVal').innerText = document.getElementById('waterSlider').value + ' L';
+            document.getElementById('fastfoodVal').innerText = document.getElementById('fastfoodSlider').value + 'x';
+            if(chartInitialized) {
+                const w = parseFloat(document.getElementById('waterSlider').value);
+                const f = parseInt(document.getElementById('fastfoodSlider').value);
+                myChart.data.datasets[2].data = [m/1000, w, f];
+                myChart.update();
+            }
+        }
+        document.getElementById('compareBtn').addEventListener('click', () => {
+            document.getElementById('chartContainer').style.opacity = "1";
+            document.getElementById('chartContainer').style.filter = "none";
+            chartInitialized = true; updateModul1();
+        });
+        ['meatSlider', 'waterSlider', 'fastfoodSlider'].forEach(id => document.getElementById(id).addEventListener('input', updateModul1));
+        updateModul1();
+
+        function revealAhaEffect() {
+            document.getElementById('revealBtn').classList.add('hidden');
+            const trueVals = { gb: 294, gl: 33 };
+            ['gb', 'gl'].forEach(p => {
+                const s = document.getElementById(p + '_mass'); s.disabled = true;
+                const marker = document.getElementById(p + '_mass_true');
+                const pct = (trueVals[p] / 400) * 100;
+                marker.style.left = `calc(${pct}% + (${14 - pct * 0.28}px))`;
+                marker.classList.remove('hidden');
+                const color = p === 'gb' ? 'text-emerald-500' : 'text-rose-500';
+                document.getElementById(p + '_mass_val').innerHTML = `<span class="text-slate-400 line-through text-sm">${s.value}g</span> <span class="${color} ml-2 font-bold">WAHR: ${trueVals[p]}g</span>`;
+            });
+            document.getElementById('revealBox').classList.remove('hidden');
+        }
+        ['gb_mass', 'gl_mass'].forEach(id => document.getElementById(id).addEventListener('input', (e) => document.getElementById(id + '_val').innerText = e.target.value + 'g'));
+
+        const db = {
+            lachs: { m: 50, w: 75, co: 250, p: 10, f: 0, ma: 15 },
+            rind: { m: 45, w: 600, co: 550, p: 10, f: 0, ma: 10 },
+            huhn: { m: 90, w: 300, co: 350, p: 20, f: 0, ma: 25 },
+            hafer: { n: 'Hafer', m: 27, w: 20, co: 30, p: 3.5, f: 2.7, ma: 35 },
+            kuerbis: { n: 'Kürbis', m: 17, w: 15, co: 25, p: 5, f: 1, ma: 90 },
+            linsen: { n: 'Linsen', m: 85, w: 40, co: 60, p: 8, f: 7, ma: 30 }
+        };
+        function renderComparison() {
+            const a = db[document.getElementById('animalSelect').value];
+            const p = db[document.getElementById('plantSelect').value];
+            const metrics = [
+                { id: 'p', label: 'Protein (g)', i: '🧱', max: 25, rev: false },
+                { id: 'co', label: 'CO2-Emission (g)', i: '☁️', max: 600, rev: true },
+                { id: 'w', label: 'Wasser (Liter)', i: '💧', max: 650, rev: true },
+                { id: 'm', label: 'Volumen (g)', i: '🍽️', max: 100, rev: false },
+                { id: 'f', label: 'Ballaststoffe (g)', i: '🧹', max: 10, rev: false },
+                { id: 'ma', label: 'Magnesium (mg)', i: '⚡', max: 100, rev: false }
+            ];
+            document.getElementById('comparisonList').innerHTML = metrics.map(m => {
+                const vA = a[m.id], vP = p[m.id];
+                const aBetter = m.rev ? (vA < vP) : (vA > vP);
+                const pBetter = m.rev ? (vP < vA) : (vP > vA);
+                return `<div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm"><div class="flex items-center gap-2 mb-3 text-[10px] uppercase font-bold text-slate-500">${m.i} ${m.label}</div><div class="space-y-3"><div class="flex items-center gap-2"><span class="text-xs w-4">🥩</span><div class="flex-grow h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div class="h-full ${vA==vP?'bg-slate-400':(aBetter?'bg-emerald-500':'bg-rose-500')}" style="width:${(vA/m.max)*100}%"></div></div><span class="font-mono text-xs w-8 text-right font-bold">${vA}</span></div><div class="flex items-center gap-2"><span class="text-xs w-4">🌱</span><div class="flex-grow h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div class="h-full ${vA==vP?'bg-slate-400':(pBetter?'bg-emerald-500':'bg-rose-500')}" style="width:${(vP/m.max)*100}%"></div></div><span class="font-mono text-xs w-8 text-right font-bold">${vP}</span></div></div></div>`;
+            }).join('');
+        }
+        ['animalSelect', 'plantSelect'].forEach(id => document.getElementById(id).addEventListener('change', renderComparison));
+        renderComparison();
+
+        function calculateImpact() {
+            const score = parseInt(document.getElementById('simBase').value) + parseInt(document.getElementById('simProtein').value) + parseInt(document.getElementById('simExtra').value);
+            const res = document.getElementById('simResult'); res.classList.remove('hidden');
+            const h = document.getElementById('simRiskHeader'); const hBox = document.getElementById('simRiskHeaderBox');
+            if(score <= 5) { 
+                hBox.className="p-5 border-b bg-emerald-50 dark:bg-emerald-900/20"; h.innerText = "Konstantes Niveau 🚀"; h.className="text-emerald-600 font-bold"; 
+                document.getElementById('simTextAfternoon').innerText = "Du bleibst konzentriert. Die Energie wird langsam und konstant abgegeben."; 
+                document.getElementById('simTextHealth').innerText = "Schont die Bauchspeicheldrüse und Gefäße."; 
+            } else if(score <= 12) { 
+                hBox.className="p-5 border-b bg-amber-50 dark:bg-amber-900/20"; h.innerText = "Leichtes Leistungstief 🔋"; h.className="text-amber-600 font-bold"; 
+                document.getElementById('simTextAfternoon').innerText = "Der Körper leitet Blut in den Magen um. Fokus lässt spürbar nach."; 
+                document.getElementById('simTextHealth').innerText = "Blutzuckerschwankungen provozieren Heißhunger."; 
+            } else { 
+                hBox.className="p-5 border-b bg-rose-50 dark:bg-rose-900/20"; h.innerText = "Akutes Leistungstief 🪫"; h.className="text-rose-600 font-bold"; 
+                document.getElementById('simTextAfternoon').innerText = "Signifikanter Abfall durch Insulin-Spike. Konzentration blockiert."; 
+                document.getElementById('simTextHealth').innerText = "Belastend: Fördert langfristig Entzündungen."; 
+            }
+            setTimeout(() => { res.scrollIntoView({behavior: "smooth", block: "center"}); }, 150);
+        }
+
+        const info = {
+            veggie: { t: "🥦 Gemüse & Obst", q: "🥦 Brokkoli & 🥬 Spinat<br>🥕 Karotten & 🫑 Paprika<br>🍅 Tomaten & 🫐 Beeren<br>🥒 Zucchini & 🥒 Gurke", b: "Liefern Ballaststoffe für eine gesunde Verdauung und Vitamine für das Immunsystem." },
+            carbs: { t: "🌾 Kohlenhydrate", q: "🌾 Haferflocken<br>🥔 Kartoffeln (abgekühlt!)<br>🍚 Vollkornreis<br>🍝 Vollkornnudeln<br>🥣 Bulgur, Quinoa, Hirse", b: "Der primäre Brennstoff für das Gehirn. Komplexe Kohlenhydrate halten den Blutzucker stabil." },
+            protein: { t: "🍗 Proteine", q: "🥘 Linsen & 🥙 Kichererbsen<br>🐟 Lachs & 🐟 Forelle<br>🍗 Hähnchen & 🍗 Pute<br>🥚 Bio-Eier & 🧊 Tofu<br>🥛 Quark & 🥛 Skyr", b: "Wichtigstes Baumaterial für Zellen und Muskeln. Unverzichtbar für die Hormonbildung." },
+            fats: { t: "🥑 Gesunde Fette", q: "🫒 Natives Olivenöl<br>🥑 Avocado<br>🥜 Walnüsse & 🌰 Mandeln<br>🐟 Fetter Seefisch<br>🧴 Leinsamen & 🧴 Hanföl", b: "Schützt die Nervenzellen im Gehirn und hilft bei der Aufnahme fettlöslicher Vitamine." },
+            water: { t: "💧 Flüssigkeit", q: "🚰 Leitungswasser<br>🍵 Kräutertee<br>☕ Schwarzer Kaffee<br>🍋 Wasser mit Zitrone<br>🥒 Gurkenwasser", b: "Hält das Blut flüssig für den Nährstoff- und Sauerstofftransport ins Gehirn." }
+        };
+        window.showPlateInfo = (id) => {
+            const d = info[id];
+            document.getElementById('plateInfoBox').innerHTML = `<div class="animate-fade w-full"><h3 class="text-xl font-black mb-4 text-tech-cyan">${d.t}</h3><p class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-widest">Sinnvolle Quellen:</p><div class="text-sm mb-4 font-bold leading-loose bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">${d.q}</div><p class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-widest">Körperliche Funktion:</p><p class="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed">${d.b}</p></div>`;
+        }
+    </script>
+</body>
+</html>
